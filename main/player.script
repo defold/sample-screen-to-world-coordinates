@@ -1,0 +1,55 @@
+local LEFT = hash("left")
+local RIGHT = hash("right")
+local UP = hash("up")
+local DOWN = hash("down")
+
+local SPEED = 60
+
+local function rotate_towards(dir)
+	local rot = math.atan2(-dir.y, -dir.x)
+	go.set("tank", "euler.z", math.deg(rot))
+end
+
+function init(self)
+	msg.post("@render:", "use_camera_projection")
+	msg.post("#camera", "acquire_camera_focus")
+	msg.post(".", "acquire_input_focus")
+	self.dir = vmath.vector3()
+end
+
+function update(self, dt)
+	-- update player position if moving in any direction
+	if vmath.length(self.dir) > 0 then
+		go.cancel_animations(".", "position")
+		local pos = go.get_position()
+		pos = pos + self.dir * SPEED * dt
+		go.set_position(pos)
+
+		-- rotate game object with sprite in direction of movement
+		rotate_towards(self.dir)
+	end
+end
+
+function on_message(self, message_id, message, sender)
+	if message_id == hash("move_to") then
+		local pos = go.get_position()
+		local to = message.to
+		local diff = to - pos
+		local distance = vmath.length(diff)
+		local duration = distance / SPEED
+		go.animate(".", "position", go.PLAYBACK_ONCE_FORWARD, to, go.EASING_LINEAR, duration)
+		rotate_towards(vmath.normalize(diff))
+	end
+end
+
+function on_input(self, action_id, action)
+	if action_id == LEFT then
+		self.dir.x = -action.value
+	elseif action_id == RIGHT then
+		self.dir.x = action.value
+	elseif action_id == UP then
+		self.dir.y = action.value
+	elseif action_id == DOWN then
+		self.dir.y = -action.value
+	end
+end
