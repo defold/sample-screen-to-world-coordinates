@@ -31,6 +31,7 @@ function update(self, dt)
 end
 
 function on_message(self, message_id, message, sender)
+	-- sent from cursor.script
 	if message_id == hash("move_to") then
 		local pos = go.get_position()
 		local to = message.to
@@ -38,7 +39,10 @@ function on_message(self, message_id, message, sender)
 		local distance = vmath.length(diff)
 		local duration = distance / SPEED
 		go.animate(".", "position", go.PLAYBACK_ONCE_FORWARD, to, go.EASING_LINEAR, duration)
-		rotate_towards(vmath.normalize(diff))
+
+		-- rotate towards direction of movement
+		local dir = vmath.normalize(diff)
+		rotate_towards(dir)
 	end
 end
 
