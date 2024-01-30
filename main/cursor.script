@@ -1,19 +1,15 @@
+local DISPLAY_WIDTH = sys.get_config_int("display.width")
+local DISPLAY_HEIGHT = sys.get_config_int("display.height")
+
 local function screen_to_world(x, y, z, camera)
 	local projection = go.get(camera, "projection")
 	local view = go.get(camera, "view")
 	local w, h = window.get_size()
-
 	-- The window.get_size() function will return the scaled window size,
 	-- ie taking into account display scaling (Retina screens on macOS for
-	-- instance)
-	-- We don't want the scaled window size when calculating screen to
-	-- world coordinates so for now we do a hack here and assume all macOS
-	-- screens are scaled 2x.
-	-- We need a Lua API to get display scaling or an option on window.get_size()
-	if sys.get_sys_info().system_name == "Darwin" then
-		w = w / 2
-		h = h / 2
-	end
+	-- instance). We need to adjust for display scaling in our calculation.
+	w = w / (w / DISPLAY_WIDTH)
+	h = h / (h / DISPLAY_HEIGHT)
 
 	-- https://defold.com/manuals/camera/#converting-mouse-to-world-coordinates
 	local inv = vmath.inv(projection * view)
