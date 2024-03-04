@@ -1,13 +1,61 @@
+local DISPLAY_WIDTH = sys.get_config_int("display.width")
+local DISPLAY_HEIGHT = sys.get_config_int("display.height")
+
 local LEFT = hash("left")
 local RIGHT = hash("right")
 local UP = hash("up")
 local DOWN = hash("down")
 
 local SPEED = 60
+local BULLET_SPEED = 600
 
-local function rotate_towards(dir)
+-- rotate an object around the z axis so that it is
+-- facing in a specific direction
+-- the direction must be normalized
+local function rotate_towards(dir, id)
 	local rot = math.atan2(-dir.y, -dir.x)
-	go.set("tank", "euler.z", math.deg(rot))
+	go.set(id, "euler.z", math.deg(rot))
+end
+
+-- convert screen to world coordinates taking into account
+-- the view and projection of a specific camera
+local function screen_to_world(x, y, z, camera)
+	local projection = go.get(camera, "projection")
+	local view = go.get(camera, "view")
+	local w, h = window.get_size()
+	-- The window.get_size() function will return the scaled window size,
+	-- ie taking into account display scaling (Retina screens on macOS for
+	-- instance). We need to adjust for display scaling in our calculation.
+	w = w / (w / DISPLAY_WIDTH)
+	h = h / (h / DISPLAY_HEIGHT)
+
+	-- https://defold.com/manuals/camera/#converting-mouse-to-world-coordinates
+	local inv = vmath.inv(projection * view)
+	x = (2 * x / w) - 1
+	y = (2 * y / h) - 1
+	z = (2 * z) - 1
+	local x1 = x * inv.m00 + y * inv.m01 + z * inv.m02 + inv.m03
+	local y1 = x * inv.m10 + y * inv.m11 + z * inv.m12 + inv.m13
+	local z1 = x * inv.m20 + y * inv.m21 + z * inv.m22 + inv.m23
+	return x1, y1, z1
+end
+
+local function fire_bullet(self, target)
+	local pos = go.get_position()
+	local to = target
+	local diff = to - pos
+	local distance = vmath.length(diff)
+	local duration = distance / BULLET_SPEED
+
+	local bullet = factory.create("#bulletfactory", pos)
+	go.animate(bullet, "position", go.PLAYBACK_ONCE_FORWARD, to, go.EASING_LINEAR, duration, 0, function()
+		go.delete(bullet)
+	end)
+
+	-- rotate bullet and tank towards direction of fire
+	local dir = vmath.normalize(diff)
+	rotate_towards(dir, bullet)
+	rotate_towards(dir, "tank")
 end
 
 function init(self)
@@ -26,25 +74,10 @@ function update(self, dt)
 		go.set_position(pos)
 
 		-- rotate game object with sprite in direction of movement
-		rotate_towards(self.dir)
+		rotate_towards(self.dir, "tank")
 	end
 end
 
-function on_message(self, message_id, message, sender)
-	-- sent from cursor.script
-	if message_id == hash("move_to") then
-		local pos = go.get_position()
-		local to = message.to
-		local diff = to - pos
-		local distance = vmath.length(diff)
-		local duration = distance / SPEED
-		go.animate(".", "position", go.PLAYBACK_ONCE_FORWARD, to, go.EASING_LINEAR, duration)
-
-		-- rotate towards direction of movement
-		local dir = vmath.normalize(diff)
-		rotate_towards(dir)
-	end
-end
 
 function on_input(self, action_id, action)
 	if action_id == LEFT then
@@ -55,5 +88,23 @@ function on_input(self, action_id, action)
 		self.dir.y = action.value
 	elseif action_id == DOWN then
 		self.dir.y = -action.value
+	end
+
+	if not action_id or action_id == hash("touch") then
+		-- convert mouse/touch screen position to world position
+		local worldx, worldy = screen_to_world(action.x, action.y, 0, "player#camera")
+
+		-- update cursor position to the world position of mouse/touch position
+		local world = vmath.vector3(worldx, worldy, 1)
+		go.set_position(world, "cursor")
+
+		-- set world position on cursor label, rounded to two decimal points
+		local text = ("x: %.2f y: %.2f"):format(worldx, worldy)
+		label.set_text("cursor#label", text)
+
+		-- on click -> send world position to player
+		if action.pressed then
+			fire_bullet(self, world)
+		end
 	end
 end
