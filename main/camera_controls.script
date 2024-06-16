@@ -1,0 +1,83 @@
+local camera = require "main.camera"
+
+local DISPLAY_WIDTH = sys.get_config_int("display.width")
+local DISPLAY_HEIGHT = sys.get_config_int("display.height")
+
+local ZOOM_05 = hash("zoom_05")
+local ZOOM_1 = hash("zoom_1")
+local ZOOM_2 = hash("zoom_2")
+local ZOOM_3 = hash("zoom_3")
+local ZOOM_AUTO = hash("zoom_auto")
+local ZOOM_OPTIONS = { ZOOM_3, ZOOM_AUTO, ZOOM_1, ZOOM_05, ZOOM_2  }
+
+-- keybinding for stepping through zoom options
+local NEXT = hash("next")
+
+-- camera url
+local CAMERA = "player#camera"
+
+-- helper to set current zoom level and update on screen instructions
+local function update_zoom(self, zoom)
+	self.zoom = zoom
+	if zoom == ZOOM_05 then
+		go.set(CAMERA, "orthographic_zoom", 0.5)
+		label.set_text("instructions#instructions", "Zoom x 0.5 - Tab for next")
+	elseif zoom == ZOOM_1 then
+		go.set(CAMERA, "orthographic_zoom", 1)
+		label.set_text("instructions#instructions", "Zoom x 1 - Tab for next")
+	elseif zoom == ZOOM_2 then
+		go.set(CAMERA, "orthographic_zoom", 2)
+		label.set_text("instructions#instructions", "Zoom x 2 - Tab for next")
+	elseif zoom == ZOOM_3 then
+		go.set(CAMERA, "orthographic_zoom", 3)
+		label.set_text("instructions#instructions", "Zoom x 3 - Tab for next")
+	elseif zoom == ZOOM_AUTO then
+		label.set_text("instructions#instructions", "Auto Zoom - Tab for next")
+	end
+end
+
+function init(self)
+	msg.post("#", "acquire_input_focus")
+	camera.init()
+	update_zoom(self, ZOOM_2)
+end
+
+function update(self, dt)
+	if self.zoom == ZOOM_AUTO then
+		camera.use_fixed_fit_projection(CAMERA)
+	end
+
+	-- this is how you fix a game object to a screen corner regardless of
+	-- aspect ratio or camera zoom
+	local screenbottomleft = vmath.vector3(camera.screen_to_world(CAMERA, 0, 0, 1))
+	go.set_position(screenbottomleft, "screenbottomleft")
+
+	local screentopright = vmath.vector3(camera.screen_to_world(CAMERA, DISPLAY_WIDTH, DISPLAY_HEIGHT, 1))
+	go.set_position(screentopright, "screentopright")
+
+	local bottomcenter = vmath.vector3(camera.screen_to_world(CAMERA, DISPLAY_WIDTH / 2, 0, 1))
+	go.set_position(bottomcenter, "instructions")
+
+	-- position two game objects on the bottom left and top right corners
+	-- of the area covered by width and height in game.project
+	local gpbottomleft = go.get_position("player")
+	gpbottomleft.x = gpbottomleft.x - (DISPLAY_WIDTH / 2)
+	gpbottomleft.y = gpbottomleft.y - (DISPLAY_HEIGHT / 2)
+	gpbottomleft.z = 1
+	go.set_position(gpbottomleft, "gpbottomleft")
+
+	local gptopright = go.get_position("player")
+	gptopright.x = gptopright.x + (DISPLAY_WIDTH / 2)
+	gptopright.y = gptopright.y + (DISPLAY_HEIGHT / 2)
+	gptopright.z = 1
+	go.set_position(gptopright, "gptopright")
+end
+
+function on_input(self, action_id, action)
+	if action_id == NEXT and action.pressed then
+		-- cycle through camera zoom options
+		local zoom = table.remove(ZOOM_OPTIONS, 1)
+		table.insert(ZOOM_OPTIONS, zoom)
+		update_zoom(self, zoom)
+	end
+end

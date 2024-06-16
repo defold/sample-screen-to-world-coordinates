@@ -1,5 +1,4 @@
-local DISPLAY_WIDTH = sys.get_config_int("display.width")
-local DISPLAY_HEIGHT = sys.get_config_int("display.height")
+local camera = require "main.camera"
 
 local LEFT = hash("left")
 local RIGHT = hash("right")
@@ -17,29 +16,7 @@ local function rotate_towards(dir, id)
 	go.set(id, "euler.z", math.deg(rot))
 end
 
--- convert screen to world coordinates taking into account
--- the view and projection of a specific camera
-local function screen_to_world(x, y, z, camera)
-	local projection = go.get(camera, "projection")
-	local view = go.get(camera, "view")
-	local w, h = window.get_size()
-	-- The window.get_size() function will return the scaled window size,
-	-- ie taking into account display scaling (Retina screens on macOS for
-	-- instance). We need to adjust for display scaling in our calculation.
-	w = w / (w / DISPLAY_WIDTH)
-	h = h / (h / DISPLAY_HEIGHT)
-
-	-- https://defold.com/manuals/camera/#converting-mouse-to-world-coordinates
-	local inv = vmath.inv(projection * view)
-	x = (2 * x / w) - 1
-	y = (2 * y / h) - 1
-	z = (2 * z) - 1
-	local x1 = x * inv.m00 + y * inv.m01 + z * inv.m02 + inv.m03
-	local y1 = x * inv.m10 + y * inv.m11 + z * inv.m12 + inv.m13
-	local z1 = x * inv.m20 + y * inv.m21 + z * inv.m22 + inv.m23
-	return x1, y1, z1
-end
-
+-- fire a bullet game object to a target position
 local function fire_bullet(self, target)
 	local pos = go.get_position()
 	local to = target
@@ -60,7 +37,6 @@ end
 
 function init(self)
 	msg.post("@render:", "use_camera_projection")
-	msg.post("#camera", "acquire_camera_focus")
 	msg.post(".", "acquire_input_focus")
 	self.dir = vmath.vector3()
 end
@@ -92,7 +68,7 @@ function on_input(self, action_id, action)
 
 	if not action_id or action_id == hash("touch") then
 		-- convert mouse/touch screen position to world position
-		local worldx, worldy = screen_to_world(action.x, action.y, 0, "player#camera")
+		local worldx, worldy = camera.screen_to_world("#camera", action.x, action.y, 0)
 
 		-- update cursor position to the world position of mouse/touch position
 		local world = vmath.vector3(worldx, worldy, 1)
