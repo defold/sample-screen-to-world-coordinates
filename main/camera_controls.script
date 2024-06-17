@@ -38,6 +38,7 @@ end
 
 function init(self)
 	msg.post("#", "acquire_input_focus")
+	msg.post(CAMERA, "acquire_camera_focus")
 	camera.init()
 	update_zoom(self, ZOOM_2)
 end
