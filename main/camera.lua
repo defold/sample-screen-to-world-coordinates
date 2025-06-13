@@ -3,15 +3,7 @@ local M = {}
 local DISPLAY_WIDTH = sys.get_config_int("display.width")
 local DISPLAY_HEIGHT = sys.get_config_int("display.height")
 
-local WINDOW_WIDTH = DISPLAY_WIDTH
-local WINDOW_HEIGHT = DISPLAY_HEIGHT
-local DISPLAY_SCALE_X = 1
-local DISPLAY_SCALE_Y = 1
-
 function M.init()
-	WINDOW_WIDTH, WINDOW_HEIGHT = window.get_size()
-	DISPLAY_SCALE_X = WINDOW_WIDTH / DISPLAY_WIDTH
-	DISPLAY_SCALE_Y = WINDOW_HEIGHT / DISPLAY_HEIGHT
 end
 
 --- convert screen to world coordinates taking into account
@@ -30,8 +22,9 @@ function M.screen_to_world(camera, screen_x, screen_y, z)
 	-- The window.get_size() function will return the scaled window size,
 	-- ie taking into account display scaling (Retina screens on macOS for
 	-- instance). We need to adjust for display scaling in our calculation.
-	w = w / (w / DISPLAY_WIDTH)
-	h = h / (h / DISPLAY_HEIGHT)
+	local scale = window.get_display_scale()
+	w = w / scale
+	h = h / scale
 
 	-- https://defold.com/manuals/camera/#converting-mouse-to-world-coordinates
 	local inv = vmath.inv(projection * view)
@@ -54,8 +47,9 @@ end
 function M.use_fixed_fit_projection(camera)
 	local w, h = window.get_size()
 	-- take into display scaling (eg retina)
-	w = w / DISPLAY_SCALE_X
-	h = h / DISPLAY_SCALE_Y
+	local scale = window.get_display_scale()
+	w = w / scale
+	h = h / scale
 	-- calculate the zoom so that the entire initial area of game project
 	-- is visible
 	local zoom = math.min(w / DISPLAY_WIDTH, h / DISPLAY_HEIGHT)
