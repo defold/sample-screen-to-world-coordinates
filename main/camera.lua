@@ -19,12 +19,6 @@ function M.screen_to_world(camera, screen_x, screen_y, z)
 	local projection = go.get(camera, "projection")
 	local view = go.get(camera, "view")
 	local w, h = window.get_size()
-	-- The window.get_size() function will return the scaled window size,
-	-- ie taking into account display scaling (Retina screens on macOS for
-	-- instance). We need to adjust for display scaling in our calculation.
-	local scale = window.get_display_scale()
-	w = w / scale
-	h = h / scale
 
 	-- https://defold.com/manuals/camera/#converting-mouse-to-world-coordinates
 	local inv = vmath.inv(projection * view)
