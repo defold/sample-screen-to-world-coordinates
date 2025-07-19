@@ -68,7 +68,7 @@ function on_input(self, action_id, action)
 
 	if not action_id or action_id == hash("touch") then
 		-- convert mouse/touch screen position to world position
-		local worldx, worldy = camera.screen_to_world("#camera", action.x, action.y, 0)
+		local worldx, worldy = camera.screen_to_world("#camera", action.screen_x, action.screen_y, 0)
 
 		-- update cursor position to the world position of mouse/touch position
 		local world = vmath.vector3(worldx, worldy, 1)
